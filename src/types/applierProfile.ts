@@ -88,7 +88,6 @@ export type WorkExperiencePageResponse = {
 export type ApplierProfileResponse = {
   applierProfileId: string;
   user: User;
-  cv: string;
   education: EducationResponse[];
   project: ProjectResponse[];
   skill: SkillResponse[];

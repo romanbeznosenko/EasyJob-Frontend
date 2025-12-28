@@ -1,16 +1,15 @@
 import React from 'react';
-import { Layout, Button, Avatar, Typography, Flex, message, Spin, Dropdown, Card } from 'antd';
-import { DownloadOutlined, UserOutlined, FileTextOutlined, EyeOutlined } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
+import { Layout, Avatar, Typography, Flex, message, Spin } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import JobSeekerNav from '../components/JobSeekerNav';
 import { SkillsSection } from '../components/SkillsSection';
 import { ProjectsSection } from '../components/ProjectsSection';
 import { EducationSection } from '../components/EducationSection';
 import { WorkExperienceSection } from '../components/WorkExperienceSection';
+import CVSection from '../components/CVSection';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getApplierProfile, generateCV } from '../services/applierProfile.service';
-import { CVTemplateEnum } from '../types/applierProfile';
+import { getApplierProfile } from '../services/applierProfile.service';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -55,7 +54,7 @@ const Dashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [education, setEducation] = useState<Education[]>([]);
   const [workExperience, setWorkExperience] = useState<WorkExperience[]>([]);
-  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [applierProfileId, setApplierProfileId] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,10 +66,8 @@ const Dashboard: React.FC = () => {
         if (response.data) {
           const profile = response.data;
 
-          // Set CV URL if available
-          if (profile.cv) {
-            setCvUrl(profile.cv);
-          }
+          // Set applier profile ID
+          setApplierProfileId(profile.applierProfileId);
 
           // Map skills from backend format
           setSkills(profile.skill.map(s => ({
@@ -123,45 +120,6 @@ const Dashboard: React.FC = () => {
     }
   }, [user]);
 
-  const handleGenerateCV = async (template: CVTemplateEnum) => {
-    try {
-      message.loading({ content: 'Generating CV...', key: 'cv-generation' });
-      await generateCV(template);
-      message.success({ content: 'CV generation started successfully! Refresh the page in a few moments to see your CV.', key: 'cv-generation', duration: 5 });
-    } catch (error) {
-      message.error({ content: 'Failed to generate CV', key: 'cv-generation' });
-      console.error('Error generating CV:', error);
-    }
-  };
-
-  const handleViewCV = () => {
-    if (cvUrl) {
-      window.open(cvUrl, '_blank');
-    }
-  };
-
-  const menuItems: MenuProps['items'] = [
-    {
-      key: 'creative',
-      label: 'Creative',
-      onClick: () => handleGenerateCV(CVTemplateEnum.CREATIVE),
-    },
-    {
-      key: 'corporate',
-      label: 'Corporate',
-      onClick: () => handleGenerateCV(CVTemplateEnum.CORPORATE),
-    },
-    {
-      key: 'minimal',
-      label: 'Minimal',
-      onClick: () => handleGenerateCV(CVTemplateEnum.MINIMAL),
-    },
-    {
-      key: 'modern',
-      label: 'Modern',
-      onClick: () => handleGenerateCV(CVTemplateEnum.MODERN),
-    },
-  ];
 
   if (loading) {
     return (
@@ -182,59 +140,21 @@ const Dashboard: React.FC = () => {
       <Content style={{ padding: 0, backgroundColor: '#f5f5f5' }}>
         <div style={{ borderBottom: '1px solid #d9d9d9', backgroundColor: '#fff', padding: '32px 24px' }}>
           <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <Flex justify="space-between" align="center">
-              <Flex align="center" gap="large">
-                <Avatar size={96} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-                <div>
-                  <Title level={2} style={{ margin: 0, marginBottom: 4 }}>
-                    {user?.name ?? "John"} {user?.surname ?? "Doe"}
-                  </Title>
-                  <Text type="secondary">{user?.email}</Text>
-                </div>
-              </Flex>
-
-              <Dropdown menu={{ items: menuItems }} placement="bottomRight">
-                <Button
-                  type="primary"
-                  icon={<DownloadOutlined />}
-                  size="large"
-                >
-                  Generate CV
-                </Button>
-              </Dropdown>
+            <Flex align="center" gap="large">
+              <Avatar size={96} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+              <div>
+                <Title level={2} style={{ margin: 0, marginBottom: 4 }}>
+                  {user?.name ?? "John"} {user?.surname ?? "Doe"}
+                </Title>
+                <Text type="secondary">{user?.email}</Text>
+              </div>
             </Flex>
           </div>
         </div>
 
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
           <Flex vertical gap="large" style={{ width: '100%' }}>
-            {cvUrl && (
-              <Card
-                title={
-                  <Flex align="center" gap="small">
-                    <FileTextOutlined />
-                    <span>Your CV</span>
-                  </Flex>
-                }
-                extra={
-                  <Button
-                    type="primary"
-                    icon={<EyeOutlined />}
-                    onClick={handleViewCV}
-                  >
-                    View CV
-                  </Button>
-                }
-                style={{ width: '100%' }}
-              >
-                <Flex vertical gap="small">
-                  <Text>Your CV has been generated and is ready to view.</Text>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    Click "View CV" to open your CV in a new tab or download it.
-                  </Text>
-                </Flex>
-              </Card>
-            )}
+            <CVSection applierProfileId={applierProfileId} />
             <SkillsSection skills={skills} setSkills={setSkills} />
             <ProjectsSection projects={projects} setProjects={setProjects} />
             <EducationSection education={education} setEducation={setEducation} />
