@@ -129,7 +129,22 @@ export function WorkExperienceSection({ workExperience, setWorkExperience }: Wor
       <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Work Experience</Title>
         {!isAdding && !editingId && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsAdding(true)}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsAdding(true)}
+            style={{
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
             Add Experience
           </Button>
         )}
