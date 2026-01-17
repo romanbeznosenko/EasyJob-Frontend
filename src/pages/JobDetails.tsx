@@ -165,7 +165,23 @@ const JobDetails: React.FC = () => {
             </Title>
 
             <Space size={24} wrap style={{ marginBottom: 16 }}>
-              <Text style={{ fontSize: 14, color: '#666' }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: '#1890ff',
+                  cursor: 'pointer',
+                  transition: 'color 0.3s ease'
+                }}
+                onClick={() => navigate(`/companies/${job.firm.firmId}`)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#40a9ff';
+                  e.currentTarget.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#1890ff';
+                  e.currentTarget.style.textDecoration = 'none';
+                }}
+              >
                 <BankOutlined style={{ marginRight: 6 }} />
                 {job.firm.name}
               </Text>

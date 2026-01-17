@@ -1,52 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Button, Typography, Avatar, Space, Card } from 'antd';
+import { Layout, Button, Typography, Avatar, Space, Card, Spin, message } from 'antd';
 import { EnvironmentOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
+import { getFirmById } from '../services/firm.service';
+import { getOffersByFirmId } from '../services/offer.service';
+import type { FirmResponse } from '../types/firm';
+import type { OfferResponse } from '../types/offer';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
-interface Company {
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  logo?: string;
-}
-
-interface JobOffer {
-  id: string;
-  name: string;
-  description: string;
-  firmId: string;
-  firmName: string;
-  location?: string;
-  createdAt: string;
-}
-
 const CompanyDetail: React.FC = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
-  const [company, setCompany] = useState<Company | null>(null);
-  const [jobs, setJobs] = useState<JobOffer[]>([]);
+  const [company, setCompany] = useState<FirmResponse | null>(null);
+  const [jobs, setJobs] = useState<OfferResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!companyId) return;
-
-    // Load company
-    const companies = JSON.parse(localStorage.getItem('companies') || '[]');
-    const foundCompany = companies.find((c: Company) => c.id === companyId);
-
-    if (foundCompany) {
-      setCompany(foundCompany);
-    }
-
-    // Load company jobs
-    const offers = JSON.parse(localStorage.getItem('offers') || '[]');
-    const companyJobs = offers.filter((job: JobOffer) => job.firmId === companyId);
-    setJobs(companyJobs);
+    fetchCompanyDetails();
   }, [companyId]);
+
+  const fetchCompanyDetails = async () => {
+    if (!companyId) return;
+
+    try {
+      setLoading(true);
+
+      // Fetch company details and jobs in parallel
+      const [companyResponse, jobsResponse] = await Promise.all([
+        getFirmById(companyId),
+        getOffersByFirmId(companyId)
+      ]);
+
+      if (companyResponse.data) {
+        setCompany(companyResponse.data);
+      } else {
+        message.error('Company not found');
+        navigate('/companies');
+      }
+
+      if (jobsResponse.data) {
+        setJobs(jobsResponse.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+      message.error('Failed to load company details');
+      navigate('/companies');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBackToCompanies = () => {
     navigate('/companies');
@@ -55,6 +61,19 @@ const CompanyDetail: React.FC = () => {
   const handleJobClick = (jobId: string) => {
     navigate(`/jobs/${jobId}`);
   };
+
+  if (loading) {
+    return (
+      <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
+        <JobSeekerNav />
+        <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+            <Spin size="large" />
+          </div>
+        </Content>
+      </Layout>
+    );
+  }
 
   if (!company) {
     return (
@@ -97,28 +116,40 @@ const CompanyDetail: React.FC = () => {
             }}
           >
             <Space align="start" size={16} style={{ width: '100%' }}>
-              <Avatar
-                size={80}
-                style={{
-                  backgroundColor: '#f0f0f0',
-                  color: '#666',
-                  fontSize: 32,
-                  flexShrink: 0
-                }}
-              >
-                {company.name.charAt(0)}
-              </Avatar>
+              {company.logo ? (
+                <Avatar
+                  size={80}
+                  src={company.logo}
+                  style={{ flexShrink: 0 }}
+                />
+              ) : (
+                <Avatar
+                  size={80}
+                  style={{
+                    backgroundColor: '#f0f0f0',
+                    color: '#666',
+                    fontSize: 32,
+                    flexShrink: 0
+                  }}
+                >
+                  {company.name.charAt(0)}
+                </Avatar>
+              )}
               <div style={{ flex: 1 }}>
                 <Title level={4} style={{ marginTop: 0, marginBottom: 8, fontWeight: 500 }}>
                   {company.name}
                 </Title>
-                <Text style={{ fontSize: 14, color: '#666' }}>
-                  <EnvironmentOutlined style={{ marginRight: 6 }} />
-                  {company.location}
-                </Text>
-                <Paragraph style={{ marginTop: 16, marginBottom: 0, color: '#666', fontSize: 14, lineHeight: 1.6 }}>
-                  {company.description}
-                </Paragraph>
+                {company.location && (
+                  <Text style={{ fontSize: 14, color: '#666' }}>
+                    <EnvironmentOutlined style={{ marginRight: 6 }} />
+                    {company.location}
+                  </Text>
+                )}
+                {company.description && (
+                  <Paragraph style={{ marginTop: 16, marginBottom: 0, color: '#666', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {company.description}
+                  </Paragraph>
+                )}
               </div>
             </Space>
           </div>
@@ -132,17 +163,26 @@ const CompanyDetail: React.FC = () => {
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
               {jobs.map((job) => (
                 <Card
-                  key={job.id}
+                  key={job.offerId}
                   hoverable
-                  onClick={() => handleJobClick(job.id)}
+                  onClick={() => handleJobClick(job.offerId)}
                   style={{
                     cursor: 'pointer',
                     borderRadius: 8,
                     border: '1px solid #e0e0e0',
-                    boxShadow: 'none'
+                    boxShadow: 'none',
+                    transition: 'all 0.3s ease'
                   }}
                   styles={{
                     body: { padding: '24px' }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
@@ -150,16 +190,15 @@ const CompanyDetail: React.FC = () => {
                       <Title level={5} style={{ marginTop: 0, marginBottom: 8, fontWeight: 500 }}>
                         {job.name}
                       </Title>
-                      <Paragraph
-                        ellipsis={{ rows: 2 }}
-                        style={{ marginBottom: 0, color: '#666', fontSize: 14, lineHeight: 1.6 }}
-                      >
-                        {job.description}
-                      </Paragraph>
+                      {job.description && (
+                        <Paragraph
+                          ellipsis={{ rows: 2 }}
+                          style={{ marginBottom: 0, color: '#666', fontSize: 14, lineHeight: 1.6 }}
+                        >
+                          {job.description}
+                        </Paragraph>
+                      )}
                     </div>
-                    <Text style={{ fontSize: 14, color: '#666', whiteSpace: 'nowrap', marginLeft: 16 }}>
-                      {new Date(job.createdAt).toLocaleDateString('en-GB')}
-                    </Text>
                   </div>
                 </Card>
               ))}

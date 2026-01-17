@@ -14,6 +14,10 @@ export const getFirmsList = async (page: number = 1, limit: number = 10): Promis
   return Api.get("/api/firm/list", { params: { page, limit } });
 };
 
+export const getFirmById = async (firmId: string): Promise<ApiResponse<FirmResponse>> => {
+  return Api.get(`/api/firm/${firmId}`);
+};
+
 export const editFirm = async (payload: FirmRequest): Promise<ApiResponse<void>> => {
   return Api.put("/api/firm/", payload);
 };
