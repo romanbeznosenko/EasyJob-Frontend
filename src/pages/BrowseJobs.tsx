@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Input, Card, Pagination, Empty, Typography, Flex, Space, Spin, message } from 'antd';
-import { SearchOutlined, EnvironmentOutlined, BankOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Layout, Input, Card, Pagination, Empty, Typography, Flex, Space, Spin, message, Tag } from 'antd';
+import {
+  SearchOutlined,
+  EnvironmentOutlined,
+  BankOutlined,
+  FileTextOutlined,
+  DollarOutlined,
+  ClockCircleOutlined,
+  LaptopOutlined,
+  UserOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
 import { getAllOffers } from '../services/offer.service';
 import type { OfferResponse } from '../types/offer';
+import { EmploymentTypeLabels, ExperienceLevelLabels, WorkModeLabels } from '../types/offer';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
+
+const formatSalary = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
 
 const BrowseJobs: React.FC = () => {
   const navigate = useNavigate();
@@ -43,7 +61,8 @@ const BrowseJobs: React.FC = () => {
   const filteredOffers = offers.filter(offer =>
     offer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     offer.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    offer.firm.name.toLowerCase().includes(searchTerm.toLowerCase())
+    offer.firm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (offer.skills && offer.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   const handleSearch = (value: string) => {
@@ -76,13 +95,13 @@ const BrowseJobs: React.FC = () => {
     <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
       <JobSeekerNav />
       <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 32, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 32, width: '60%' }}>
           <Title level={3} style={{ marginBottom: 24, fontWeight: 500 }}>
             Browse Job Opportunities
           </Title>
           <Input
             size="large"
-            placeholder="Search jobs by title, company, or description..."
+            placeholder="Search jobs by title, company, skills, or description..."
             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
             value={searchTerm}
             onChange={(e) => handleSearch(e.target.value)}
@@ -94,7 +113,7 @@ const BrowseJobs: React.FC = () => {
           />
         </div>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '60%' }}>
           {filteredOffers.length > 0 ? (
             <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -108,16 +127,30 @@ const BrowseJobs: React.FC = () => {
                       borderRadius: 8,
                       border: '1px solid #e0e0e0',
                       boxShadow: 'none',
-                      width: '100%'
+                      width: '100%',
+                      transition: 'all 0.3s ease'
                     }}
                     styles={{
                       body: { padding: '24px' }
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
                     <Flex justify="space-between" align="start" style={{ marginBottom: 12 }}>
                       <Title level={5} style={{ marginBottom: 0, marginTop: 0, fontWeight: 500 }}>
                         {offer.name}
                       </Title>
+                      {offer.isSalaryDisclosed && (
+                        <Tag icon={<DollarOutlined />} color="green" style={{ marginLeft: 12 }}>
+                          {formatSalary(offer.salaryBottom)} - {formatSalary(offer.salaryTop)}
+                        </Tag>
+                      )}
                     </Flex>
 
                     <Space size={24} wrap style={{ marginBottom: 12 }}>
@@ -133,8 +166,41 @@ const BrowseJobs: React.FC = () => {
                       )}
                     </Space>
 
+                    {/* Job Info Tags */}
+                    <div style={{ marginBottom: 12 }}>
+                      <Space size={6} wrap>
+                        <Tag icon={<ClockCircleOutlined />} color="blue">
+                          {EmploymentTypeLabels[offer.employmentType]}
+                        </Tag>
+                        <Tag icon={<UserOutlined />} color="purple">
+                          {ExperienceLevelLabels[offer.experienceLevel]}
+                        </Tag>
+                        <Tag icon={<LaptopOutlined />} color="cyan">
+                          {WorkModeLabels[offer.workMode]}
+                        </Tag>
+                      </Space>
+                    </div>
+
+                    {/* Skills */}
+                    {offer.skills && offer.skills.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Space size={4} wrap>
+                          {offer.skills.slice(0, 5).map((skill, index) => (
+                            <Tag key={index} style={{ borderRadius: 4, fontSize: 12 }}>
+                              {skill}
+                            </Tag>
+                          ))}
+                          {offer.skills.length > 5 && (
+                            <Tag style={{ borderRadius: 4, fontSize: 12, background: '#f5f5f5' }}>
+                              +{offer.skills.length - 5} more
+                            </Tag>
+                          )}
+                        </Space>
+                      </div>
+                    )}
+
                     <Paragraph
-                      ellipsis={{ rows: 3 }}
+                      ellipsis={{ rows: 2 }}
                       style={{
                         marginBottom: 0,
                         color: '#666',

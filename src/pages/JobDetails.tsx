@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Button, Typography, Space, message, Spin } from 'antd';
-import { BankOutlined, EnvironmentOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { Layout, Button, Typography, Space, message, Spin, Tag } from 'antd';
+import {
+  BankOutlined,
+  EnvironmentOutlined,
+  ArrowLeftOutlined,
+  DollarOutlined,
+  ClockCircleOutlined,
+  LaptopOutlined,
+  UserOutlined
+} from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
 import CVSelectModal from '../components/CVSelectModal';
@@ -8,9 +16,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { getOfferById } from '../services/offer.service';
 import { applyForOffer, getUserApplications } from '../services/application.service';
 import type { OfferResponse } from '../types/offer';
+import { EmploymentTypeLabels, ExperienceLevelLabels, WorkModeLabels } from '../types/offer';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
+
+const formatSalary = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
 
 const JobDetails: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -136,7 +153,7 @@ const JobDetails: React.FC = () => {
     <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
       <JobSeekerNav />
       <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 48, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 48, width: '60%' }}>
           {/* Back Button */}
           <div style={{ textAlign: 'left' }}>
             <Button
@@ -193,8 +210,44 @@ const JobDetails: React.FC = () => {
               )}
             </Space>
 
-            {/* Apply Button - Second Row */}
-            <div style={{ marginTop: 16 }}>
+            {/* Job Info Tags */}
+            <div style={{ marginBottom: 16 }}>
+              <Space size={8} wrap>
+                <Tag icon={<ClockCircleOutlined />} color="blue">
+                  {EmploymentTypeLabels[job.employmentType]}
+                </Tag>
+                <Tag icon={<UserOutlined />} color="purple">
+                  {ExperienceLevelLabels[job.experienceLevel]}
+                </Tag>
+                <Tag icon={<LaptopOutlined />} color="cyan">
+                  {WorkModeLabels[job.workMode]}
+                </Tag>
+                {job.isSalaryDisclosed && (
+                  <Tag icon={<DollarOutlined />} color="green">
+                    {formatSalary(job.salaryBottom)} - {formatSalary(job.salaryTop)}
+                  </Tag>
+                )}
+              </Space>
+            </div>
+
+            {/* Required Skills */}
+            {job.skills && job.skills.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8, color: '#666' }}>
+                  Required Skills:
+                </Text>
+                <Space size={6} wrap>
+                  {job.skills.map((skill, index) => (
+                    <Tag key={index} style={{ borderRadius: 4 }}>
+                      {skill}
+                    </Tag>
+                  ))}
+                </Space>
+              </div>
+            )}
+
+            {/* Apply Button */}
+            <div style={{ marginTop: 24 }}>
               {hasApplied ? (
                 <Button
                   size="large"
