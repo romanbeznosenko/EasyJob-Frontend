@@ -3,8 +3,10 @@ import type { OfferApplicationPageResponse } from "../types/application";
 import type { OfferApplicationEvaluationResponse } from "../types/evaluation";
 import { Api } from "../api/Api";
 
-export const applyForOffer = async (offerId: string): Promise<ApiResponse<void>> => {
-  return Api.post(`/api/offer-application/offer/${offerId}/apply`);
+export const applyForOffer = async (offerId: string, cvId: string): Promise<ApiResponse<void>> => {
+  return Api.post(`/api/offer-application/offer/${offerId}/apply`, null, {
+    params: { cv: cvId }
+  });
 };
 
 export const getUserApplications = async (page: number = 1, limit: number = 10): Promise<ApiResponse<OfferApplicationPageResponse>> => {

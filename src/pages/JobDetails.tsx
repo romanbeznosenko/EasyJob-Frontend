@@ -3,6 +3,7 @@ import { Layout, Button, Typography, Space, message, Spin } from 'antd';
 import { BankOutlined, EnvironmentOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
+import CVSelectModal from '../components/CVSelectModal';
 import { useAuth } from '../contexts/AuthContext';
 import { getOfferById } from '../services/offer.service';
 import { applyForOffer, getUserApplications } from '../services/application.service';
@@ -19,6 +20,7 @@ const JobDetails: React.FC = () => {
   const [hasApplied, setHasApplied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [cvSelectModalVisible, setCvSelectModalVisible] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -66,7 +68,7 @@ const JobDetails: React.FC = () => {
     }
   };
 
-  const handleApply = async () => {
+  const handleApplyClick = () => {
     if (!user) {
       message.warning('Please login to apply for this job');
       navigate('/login');
@@ -75,11 +77,19 @@ const JobDetails: React.FC = () => {
 
     if (!job) return;
 
+    // Open CV selection modal
+    setCvSelectModalVisible(true);
+  };
+
+  const handleApplyWithCV = async (cvId: string) => {
+    if (!job) return;
+
     setLoading(true);
 
     try {
-      await applyForOffer(job.offerId);
+      await applyForOffer(job.offerId, cvId);
       setHasApplied(true);
+      setCvSelectModalVisible(false);
       message.success('Application submitted successfully!');
     } catch (error: any) {
       console.error('Error submitting application:', error);
@@ -187,11 +197,19 @@ const JobDetails: React.FC = () => {
                 <Button
                   type="primary"
                   size="large"
-                  onClick={handleApply}
-                  loading={loading}
+                  onClick={handleApplyClick}
                   style={{
                     borderRadius: 6,
-                    fontWeight: 500
+                    fontWeight: 500,
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   Apply Now
@@ -243,6 +261,14 @@ const JobDetails: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* CV Selection Modal */}
+        <CVSelectModal
+          visible={cvSelectModalVisible}
+          onCancel={() => setCvSelectModalVisible(false)}
+          onSelect={handleApplyWithCV}
+          loading={loading}
+        />
       </Content>
     </Layout>
   );
