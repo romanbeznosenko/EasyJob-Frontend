@@ -1,6 +1,6 @@
 import React from 'react';
-import { Layout, Avatar, Typography, Flex, message, Spin } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+import { Layout, Avatar, Typography, Flex, message, Spin, Card, Tag } from 'antd';
+import { UserOutlined, MailOutlined, IdcardOutlined } from '@ant-design/icons';
 import JobSeekerNav from '../components/JobSeekerNav';
 import { SkillsSection } from '../components/SkillsSection';
 import { ProjectsSection } from '../components/ProjectsSection';
@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getApplierProfile } from '../services/applierProfile.service';
 
 const { Content } = Layout;
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export interface Skill {
   id: string;
@@ -123,9 +123,9 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout style={{ minHeight: '100vh' }}>
+      <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
         <JobSeekerNav />
-        <Content style={{ padding: 0, backgroundColor: '#f5f5f5' }}>
+        <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <Spin size="large" />
           </div>
@@ -135,25 +135,78 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
       <JobSeekerNav />
-      <Content style={{ padding: 0, backgroundColor: '#f5f5f5' }}>
-        <div style={{ borderBottom: '1px solid #d9d9d9', backgroundColor: '#fff', padding: '32px 24px' }}>
-          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <Flex align="center" gap="large">
-              <Avatar size={96} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-              <div>
-                <Title level={2} style={{ margin: 0, marginBottom: 4 }}>
+      <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', paddingTop: 40, paddingBottom: 48 }}>
+          {/* Profile Header Card */}
+          <Card
+            style={{
+              borderRadius: 12,
+              border: '1px solid #e8e8e8',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+              marginBottom: 32,
+              overflow: 'hidden'
+            }}
+            styles={{ body: { padding: 0 } }}
+          >
+            {/* Gradient Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              padding: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 24
+            }}>
+              <Avatar
+                size={100}
+                icon={<UserOutlined style={{ fontSize: 48 }} />}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  border: '4px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+                  flexShrink: 0
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <Title level={2} style={{ margin: 0, marginBottom: 8, color: '#fff', fontWeight: 600 }}>
                   {user?.name ?? "John"} {user?.surname ?? "Doe"}
                 </Title>
-                <Text type="secondary">{user?.email}</Text>
+                <Flex gap={12} wrap="wrap" align="center">
+                  <Tag
+                    icon={<MailOutlined />}
+                    style={{
+                      borderRadius: 12,
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      color: '#fff',
+                      fontSize: 13,
+                      padding: '4px 12px'
+                    }}
+                  >
+                    {user?.email}
+                  </Tag>
+                  <Tag
+                    icon={<IdcardOutlined />}
+                    style={{
+                      borderRadius: 12,
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      color: '#fff',
+                      fontSize: 13,
+                      padding: '4px 12px'
+                    }}
+                  >
+                    Job Seeker
+                  </Tag>
+                </Flex>
               </div>
-            </Flex>
-          </div>
-        </div>
+            </div>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
-          <Flex vertical gap="large" style={{ width: '100%' }}>
+          </Card>
+
+          {/* Content Sections */}
+          <Flex vertical gap={24} style={{ width: '100%' }}>
             <CVSection applierProfileId={applierProfileId} />
             <SkillsSection skills={skills} setSkills={setSkills} />
             <ProjectsSection projects={projects} setProjects={setProjects} />

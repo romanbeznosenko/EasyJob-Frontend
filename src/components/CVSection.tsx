@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Empty, message, Spin, Modal, Input, Form, Button, Dropdown } from 'antd';
-import { FileTextOutlined, ExclamationCircleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Card, Empty, message, Spin, Modal, Input, Form, Button, Dropdown, Typography, Flex } from 'antd';
+import { FileTextOutlined, ExclamationCircleOutlined, DownloadOutlined, FilePdfOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { listCVs, deleteCV, editCV } from '../services/cv.service';
 import { generateCV } from '../services/applierProfile.service';
@@ -10,6 +10,7 @@ import CVCard from './CVCard';
 import CVViewerModal from './CVViewerModal';
 
 const { confirm } = Modal;
+const { Title, Text } = Typography;
 
 interface CVSectionProps {
   applierProfileId: string;
@@ -179,72 +180,104 @@ const CVSection: React.FC<CVSectionProps> = ({ applierProfileId }) => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  if (cvs.length === 0) {
-    return (
-      <>
-        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>My CVs</h2>
-          <Dropdown menu={{ items: menuItems }} placement="bottomRight">
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              size="large"
-            >
-              Generate CV
-            </Button>
-          </Dropdown>
+      <Card
+        style={{
+          borderRadius: 12,
+          border: '1px solid #e8e8e8',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+          <Spin size="large" />
         </div>
-        <Card style={{ borderRadius: 8, border: '1px solid #e0e0e0', boxShadow: 'none', textAlign: 'center', padding: '32px 0' }}>
-          <Empty
-            image={<FileTextOutlined style={{ fontSize: 64, color: '#bfbfbf' }} />}
-            description="No CVs generated yet"
-          />
-        </Card>
-      </>
+      </Card>
     );
   }
 
   return (
-    <>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 500 }}>My CVs</h2>
+    <Card
+      style={{
+        borderRadius: 12,
+        border: '1px solid #e8e8e8',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+      }}
+    >
+      <Flex justify="space-between" align="center" style={{ marginBottom: 20 }}>
+        <Flex align="center" gap={12}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <FilePdfOutlined style={{ fontSize: 20, color: '#fff' }} />
+          </div>
+          <Title level={4} style={{ margin: 0, fontWeight: 600 }}>My CVs</Title>
+        </Flex>
         <Dropdown menu={{ items: menuItems }} placement="bottomRight">
           <Button
             type="primary"
             icon={<DownloadOutlined />}
-            size="large"
+            style={{
+              borderRadius: 8,
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(24, 144, 255, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           >
             Generate CV
           </Button>
         </Dropdown>
-      </div>
+      </Flex>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 24,
-          width: '100%'
-        }}
-      >
-        {cvs.map((cv) => (
-          <CVCard
-            key={cv.cvId}
-            cv={cv}
-            onClick={handleViewCV}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            onDownload={handleDownload}
-            isDeleting={deletingId === cv.cvId}
+      {cvs.length === 0 ? (
+        <div
+          style={{
+            padding: '40px 20px',
+            backgroundColor: '#fafafa',
+            borderRadius: 10,
+            border: '1px solid #f0f0f0',
+            textAlign: 'center'
+          }}
+        >
+          <Empty
+            image={<FileTextOutlined style={{ fontSize: 48, color: '#bfbfbf' }} />}
+            description={
+              <Text type="secondary">No CVs generated yet. Click 'Generate CV' to create one.</Text>
+            }
           />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 16,
+            width: '100%'
+          }}
+        >
+          {cvs.map((cv) => (
+            <CVCard
+              key={cv.cvId}
+              cv={cv}
+              onClick={handleViewCV}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onDownload={handleDownload}
+              isDeleting={deletingId === cv.cvId}
+            />
+          ))}
+        </div>
+      )}
 
       {selectedCV && (
         <CVViewerModal
@@ -286,7 +319,7 @@ const CVSection: React.FC<CVSectionProps> = ({ applierProfileId }) => {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </Card>
   );
 };
 
