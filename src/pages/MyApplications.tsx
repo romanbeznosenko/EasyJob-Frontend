@@ -1,14 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Tag, Empty, Typography, Space, Button, Spin, message } from 'antd';
-import { BankOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Layout, Card, Tag, Empty, Typography, Space, Button, Spin, message, Flex } from 'antd';
+import {
+  BankOutlined,
+  FileTextOutlined,
+  EnvironmentOutlined,
+  DollarOutlined,
+  ClockCircleOutlined,
+  LaptopOutlined,
+  UserOutlined,
+  CalendarOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserApplications } from '../services/application.service';
 import type { OfferApplicationResponse, ApplicationStatus } from '../types/application';
+import { EmploymentTypeLabels, ExperienceLevelLabels, WorkModeLabels } from '../types/offer';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
+
+const formatSalary = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+const formatDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
 
 const MyApplications: React.FC = () => {
   const { user } = useAuth();
@@ -78,13 +104,13 @@ const MyApplications: React.FC = () => {
     <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
       <JobSeekerNav />
       <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 32, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 32, width: '60%' }}>
           <Title level={3} style={{ marginBottom: 24, fontWeight: 500 }}>
             My Applications
           </Title>
         </div>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '60%' }}>
           {applications.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {applications.map((application) => (
@@ -97,36 +123,96 @@ const MyApplications: React.FC = () => {
                     borderRadius: 8,
                     border: '1px solid #e0e0e0',
                     boxShadow: 'none',
-                    width: '100%'
+                    width: '100%',
+                    transition: 'all 0.3s ease'
                   }}
                   styles={{
                     body: { padding: '24px' }
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <div style={{ flex: 1 }}>
-                      <Title level={5} style={{ marginBottom: 12, marginTop: 0, fontWeight: 500 }}>
-                        {application.offer.name}
-                      </Title>
-                      <Space size={24} wrap>
-                        <Text style={{ fontSize: 14, color: '#666' }}>
-                          <BankOutlined style={{ marginRight: 6 }} />
-                          {application.offer.firm.name}
-                        </Text>
+                  {/* Header: Title + Status */}
+                  <Flex justify="space-between" align="start" style={{ marginBottom: 12 }}>
+                    <Title level={5} style={{ marginBottom: 0, marginTop: 0, fontWeight: 500 }}>
+                      {application.offer.name}
+                    </Title>
+                    <Flex gap={8} align="center">
+                      {application.offer.isSalaryDisclosed && (
+                        <Tag icon={<DollarOutlined />} color="green">
+                          {formatSalary(application.offer.salaryBottom)} - {formatSalary(application.offer.salaryTop)}
+                        </Tag>
+                      )}
+                      <Tag
+                        color={getStatusColor(application.status)}
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: 13,
+                          borderRadius: 4,
+                          fontWeight: 500
+                        }}
+                      >
+                        {formatStatus(application.status)}
+                      </Tag>
+                    </Flex>
+                  </Flex>
+
+                  {/* Company & Location */}
+                  <Space size={24} wrap style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, color: '#666' }}>
+                      <BankOutlined style={{ marginRight: 6 }} />
+                      {application.offer.firm.name}
+                    </Text>
+                    {application.offer.firm.location && (
+                      <Text style={{ fontSize: 14, color: '#666' }}>
+                        <EnvironmentOutlined style={{ marginRight: 6 }} />
+                        {application.offer.firm.location}
+                      </Text>
+                    )}
+                    <Text style={{ fontSize: 14, color: '#999' }}>
+                      <CalendarOutlined style={{ marginRight: 6 }} />
+                      Applied {formatDate(application.createdAt)}
+                    </Text>
+                  </Space>
+
+                  {/* Job Info Tags */}
+                  <div style={{ marginBottom: 12 }}>
+                    <Space size={6} wrap>
+                      <Tag icon={<ClockCircleOutlined />} color="blue">
+                        {EmploymentTypeLabels[application.offer.employmentType]}
+                      </Tag>
+                      <Tag icon={<UserOutlined />} color="purple">
+                        {ExperienceLevelLabels[application.offer.experienceLevel]}
+                      </Tag>
+                      <Tag icon={<LaptopOutlined />} color="cyan">
+                        {WorkModeLabels[application.offer.workMode]}
+                      </Tag>
+                    </Space>
+                  </div>
+
+                  {/* Skills */}
+                  {application.offer.skills && application.offer.skills.length > 0 && (
+                    <div>
+                      <Space size={4} wrap>
+                        {application.offer.skills.slice(0, 5).map((skill, index) => (
+                          <Tag key={index} style={{ borderRadius: 4, fontSize: 12 }}>
+                            {skill}
+                          </Tag>
+                        ))}
+                        {application.offer.skills.length > 5 && (
+                          <Tag style={{ borderRadius: 4, fontSize: 12, background: '#f5f5f5' }}>
+                            +{application.offer.skills.length - 5} more
+                          </Tag>
+                        )}
                       </Space>
                     </div>
-                    <Tag
-                      color={getStatusColor(application.status)}
-                      style={{
-                        marginLeft: 16,
-                        padding: '4px 12px',
-                        fontSize: 14,
-                        borderRadius: 4
-                      }}
-                    >
-                      {formatStatus(application.status)}
-                    </Tag>
-                  </div>
+                  )}
                 </Card>
               ))}
             </div>
