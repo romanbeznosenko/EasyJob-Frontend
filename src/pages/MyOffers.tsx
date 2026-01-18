@@ -1,14 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Button, Empty, Typography, Space, Spin, message } from 'antd';
-import { PlusOutlined, BankOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Layout, Card, Button, Empty, Typography, Space, Spin, message, Tag, Flex } from 'antd';
+import {
+  PlusOutlined,
+  BankOutlined,
+  FileTextOutlined,
+  EnvironmentOutlined,
+  DollarOutlined,
+  ClockCircleOutlined,
+  LaptopOutlined,
+  UserOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import RecruiterNav from '../components/RecruiterNav';
 import { useAuth } from '../contexts/AuthContext';
 import { getFirmOffers } from '../services/offer.service';
 import type { OfferResponse } from '../types/offer';
+import { EmploymentTypeLabels, ExperienceLevelLabels, WorkModeLabels } from '../types/offer';
 
 const { Content } = Layout;
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
+
+const formatSalary = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
 
 const MyOffers: React.FC = () => {
   const { user } = useAuth();
@@ -63,7 +81,7 @@ const MyOffers: React.FC = () => {
     <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
       <RecruiterNav />
       <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 32, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingTop: 40, paddingBottom: 32, width: '60%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <Title level={3} style={{ margin: 0, fontWeight: 500 }}>
               My Job Offers
@@ -80,7 +98,7 @@ const MyOffers: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '20%' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '60%' }}>
           {offers.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {offers.map((offer: OfferResponse) => (
@@ -92,25 +110,90 @@ const MyOffers: React.FC = () => {
                     cursor: 'pointer',
                     borderRadius: 8,
                     border: '1px solid #e0e0e0',
-                    boxShadow: 'none'
+                    boxShadow: 'none',
+                    width: '100%',
+                    transition: 'all 0.3s ease'
                   }}
                   styles={{
                     body: { padding: '24px' }
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <div style={{ flex: 1 }}>
-                      <Title level={5} style={{ marginBottom: 12, marginTop: 0, fontWeight: 500 }}>
-                        {offer.name}
-                      </Title>
-                      <Space size={24} wrap>
-                        <Text style={{ fontSize: 14, color: '#666' }}>
-                          <BankOutlined style={{ marginRight: 6 }} />
-                          {offer.firm.name}
-                        </Text>
+                  <Flex justify="space-between" align="start" style={{ marginBottom: 12 }}>
+                    <Title level={5} style={{ marginBottom: 0, marginTop: 0, fontWeight: 500 }}>
+                      {offer.name}
+                    </Title>
+                    {offer.isSalaryDisclosed && (
+                      <Tag icon={<DollarOutlined />} color="green" style={{ marginLeft: 12 }}>
+                        {formatSalary(offer.salaryBottom)} - {formatSalary(offer.salaryTop)}
+                      </Tag>
+                    )}
+                  </Flex>
+
+                  <Space size={24} wrap style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, color: '#666' }}>
+                      <BankOutlined style={{ marginRight: 6 }} />
+                      {offer.firm.name}
+                    </Text>
+                    {offer.firm.location && (
+                      <Text style={{ fontSize: 14, color: '#666' }}>
+                        <EnvironmentOutlined style={{ marginRight: 6 }} />
+                        {offer.firm.location}
+                      </Text>
+                    )}
+                  </Space>
+
+                  {/* Job Info Tags */}
+                  <div style={{ marginBottom: 12 }}>
+                    <Space size={6} wrap>
+                      <Tag icon={<ClockCircleOutlined />} color="blue">
+                        {EmploymentTypeLabels[offer.employmentType]}
+                      </Tag>
+                      <Tag icon={<UserOutlined />} color="purple">
+                        {ExperienceLevelLabels[offer.experienceLevel]}
+                      </Tag>
+                      <Tag icon={<LaptopOutlined />} color="cyan">
+                        {WorkModeLabels[offer.workMode]}
+                      </Tag>
+                    </Space>
+                  </div>
+
+                  {/* Skills */}
+                  {offer.skills && offer.skills.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <Space size={4} wrap>
+                        {offer.skills.slice(0, 5).map((skill, index) => (
+                          <Tag key={index} style={{ borderRadius: 4, fontSize: 12 }}>
+                            {skill}
+                          </Tag>
+                        ))}
+                        {offer.skills.length > 5 && (
+                          <Tag style={{ borderRadius: 4, fontSize: 12, background: '#f5f5f5' }}>
+                            +{offer.skills.length - 5} more
+                          </Tag>
+                        )}
                       </Space>
                     </div>
-                  </div>
+                  )}
+
+                  <Paragraph
+                    ellipsis={{ rows: 2 }}
+                    style={{
+                      marginBottom: 0,
+                      color: '#666',
+                      fontSize: 14,
+                      lineHeight: 1.6
+                    }}
+                  >
+                    {offer.description}
+                  </Paragraph>
                 </Card>
               ))}
             </div>

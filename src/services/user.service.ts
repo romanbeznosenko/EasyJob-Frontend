@@ -3,13 +3,13 @@ import type { ApiResponse } from "../types/general";
 import { Api } from "../api/Api";
 
 export const getUserDetails = async (): Promise<ApiResponse<User>> => {
-  return Api.get("/user");
+  return Api.get("/api/user");
 };
 
 export const editUserDetails = async (payload: UserEditRequest): Promise<ApiResponse<void>> => {
-  return Api.patch("/user", payload);
+  return Api.patch("/api/user", payload);
 };
 
 export const deleteUser = async (payload: UserDeleteRequest): Promise<ApiResponse<void>> => {
-  return Api.delete("/user", { data: payload });
+  return Api.delete("/api/user", { data: payload });
 };

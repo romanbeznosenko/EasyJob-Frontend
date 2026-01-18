@@ -1,214 +1,336 @@
 import React, { useState } from 'react';
-import { Layout, Card, Avatar, Typography, Button, Input, Row, Col, Space, message } from 'antd';
+import { Layout, Card, Avatar, Typography, Button, Form, Input, Row, Col, message, Modal } from 'antd';
 import { UserOutlined, EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import JobSeekerNav from '../components/JobSeekerNav';
 import RecruiterNav from '../components/RecruiterNav';
 import { useAuth } from '../contexts/AuthContext';
 import { UserTypeEnum } from '../types/auth';
+import { editUserDetails, deleteUser } from '../services/user.service';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 const Profile: React.FC = () => {
-  const { user, logoutUser } = useAuth();
+  const { user, logoutUser, refreshUser } = useAuth();
+  const [form] = Form.useForm();
+  const [deleteForm] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    surname: user?.surname || '',
-    email: user?.email || ''
-  });
+  const [loading, setLoading] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleEdit = () => {
+    form.setFieldsValue({
+      name: user?.name || '',
+      surname: user?.surname || '',
+    });
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    setFormData({
-      name: user?.name || '',
-      surname: user?.surname || '',
-      email: user?.email || ''
-    });
+    form.resetFields();
     setIsEditing(false);
   };
 
-  const handleSave = () => {
-    // Update user data in localStorage
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    const updatedUser = {
-      ...currentUser,
-      name: formData.name,
-      surname: formData.surname,
-      email: formData.email
-    };
-
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-    // Update all users in localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = users.map((u: any) =>
-      u.id === currentUser.id ? updatedUser : u
-    );
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-    message.success('Profile updated successfully!');
-    setIsEditing(false);
-
-    // Reload page to update context
-    window.location.reload();
-  };
-
-  const handleDeleteAccount = async () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      await logoutUser();
-      message.success('Account deleted successfully');
-      window.location.href = '/';
+  const handleSave = async (values: { name: string; surname: string }) => {
+    setLoading(true);
+    try {
+      await editUserDetails({
+        name: values.name,
+        surname: values.surname,
+      });
+      await refreshUser();
+      message.success('Profile updated successfully!');
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      const errorMessage = error?.response?.data?.message || 'Failed to update profile';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleDeleteAccount = async (values: { password: string }) => {
+    setDeleteLoading(true);
+    try {
+      await deleteUser({ password: values.password });
+      message.success('Account deleted successfully');
+      await logoutUser();
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      const errorMessage = error?.response?.data?.message || 'Failed to delete account';
+      message.error(errorMessage);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
-  // Determine which navigation to use based on user type
+  const openDeleteModal = () => {
+    deleteForm.resetFields();
+    setDeleteModalVisible(true);
+  };
+
   const NavComponent = user?.userType === UserTypeEnum.RECRUITER ? RecruiterNav : JobSeekerNav;
 
+  // View mode
+  if (!isEditing) {
+    return (
+      <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
+        <NavComponent />
+        <Content style={{ padding: '40px 24px', backgroundColor: '#fafafa' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto' }}>
+            {/* Profile Card */}
+            <Card
+              style={{
+                borderRadius: 8,
+                border: '1px solid #e0e0e0',
+                boxShadow: 'none',
+                marginBottom: 24,
+              }}
+              styles={{
+                body: { padding: '40px' }
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 40 }}>
+                <Title level={4} style={{ margin: 0, fontWeight: 500 }}>
+                  User Profile
+                </Title>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={handleEdit}
+                  style={{ borderRadius: 6 }}
+                >
+                  Edit Profile
+                </Button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '24px', marginBottom: 40 }}>
+                <Avatar
+                  size={80}
+                  icon={<UserOutlined />}
+                  style={{ backgroundColor: '#1890ff', color: '#fff', flexShrink: 0 }}
+                />
+                <div>
+                  <Title level={4} style={{ margin: 0, marginBottom: 4, fontWeight: 500 }}>
+                    {user?.name} {user?.surname}
+                  </Title>
+                  <Text style={{ fontSize: 15, color: '#666', display: 'block', marginBottom: 4 }}>
+                    {user?.email}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#999' }}>
+                    {user?.userType === UserTypeEnum.RECRUITER ? 'Recruiter' : 'Job Seeker'}
+                  </Text>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 32 }}>
+                <Title level={5} style={{ marginBottom: 16, fontWeight: 500 }}>
+                  Account Information
+                </Title>
+                <Row gutter={[24, 16]}>
+                  <Col span={12}>
+                    <Text style={{ fontSize: 13, color: '#999', display: 'block', marginBottom: 4 }}>
+                      First Name
+                    </Text>
+                    <Text style={{ fontSize: 15 }}>{user?.name}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text style={{ fontSize: 13, color: '#999', display: 'block', marginBottom: 4 }}>
+                      Last Name
+                    </Text>
+                    <Text style={{ fontSize: 15 }}>{user?.surname}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text style={{ fontSize: 13, color: '#999', display: 'block', marginBottom: 4 }}>
+                      Email
+                    </Text>
+                    <Text style={{ fontSize: 15 }}>{user?.email}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text style={{ fontSize: 13, color: '#999', display: 'block', marginBottom: 4 }}>
+                      Account Type
+                    </Text>
+                    <Text style={{ fontSize: 15 }}>
+                      {user?.userType === UserTypeEnum.RECRUITER ? 'Recruiter' : 'Job Seeker'}
+                    </Text>
+                  </Col>
+                </Row>
+              </div>
+            </Card>
+
+            {/* Danger Zone */}
+            <Card
+              style={{
+                borderRadius: 8,
+                border: '1px solid #ffccc7',
+                boxShadow: 'none',
+                backgroundColor: '#fff2f0',
+              }}
+              styles={{
+                body: { padding: '32px 40px' }
+              }}
+            >
+              <Title level={5} style={{ marginTop: 0, marginBottom: 8, color: '#ff4d4f', fontWeight: 500 }}>
+                Danger Zone
+              </Title>
+              <Text style={{ display: 'block', marginBottom: 16, color: '#666' }}>
+                Once you delete your account, there is no going back. Please be certain.
+              </Text>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={openDeleteModal}
+                style={{ borderRadius: 6 }}
+              >
+                Delete Account
+              </Button>
+            </Card>
+          </div>
+        </Content>
+
+        {/* Delete Account Modal */}
+        <Modal
+          title="Delete Account"
+          open={deleteModalVisible}
+          onCancel={() => setDeleteModalVisible(false)}
+          footer={null}
+          destroyOnHidden
+        >
+          <Text style={{ display: 'block', marginBottom: 16, color: '#666' }}>
+            This action cannot be undone. Please enter your password to confirm.
+          </Text>
+          <Form form={deleteForm} onFinish={handleDeleteAccount} layout="vertical">
+            <Form.Item
+              name="password"
+              label="Password"
+              rules={[{ required: true, message: 'Please enter your password' }]}
+            >
+              <Input.Password size="large" placeholder="Enter your password" />
+            </Form.Item>
+            <Form.Item style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <Button onClick={() => setDeleteModalVisible(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  danger
+                  type="primary"
+                  htmlType="submit"
+                  loading={deleteLoading}
+                >
+                  Delete Account
+                </Button>
+              </div>
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Layout>
+    );
+  }
+
+  // Edit mode
   return (
     <Layout style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
       <NavComponent />
-      <Content style={{ padding: '0 24px', backgroundColor: '#fafafa' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', paddingTop: 40, paddingBottom: 48 }}>
-          {/* Profile Card */}
+      <Content style={{ padding: '40px 24px', backgroundColor: '#fafafa' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <Card
             style={{
               borderRadius: 8,
               border: '1px solid #e0e0e0',
               boxShadow: 'none',
-              marginBottom: 24
             }}
             styles={{
-              body: { padding: 32 }
+              body: { padding: '40px' }
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <Title level={4} style={{ margin: 0 }}>User Profile</Title>
-              {!isEditing && (
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={handleEdit}
-                >
-                  Edit Profile
-                </Button>
-              )}
-            </div>
+            <Title level={4} style={{ marginBottom: 32, fontWeight: 500 }}>
+              Edit Profile
+            </Title>
 
-            {!isEditing ? (
-              // View Mode
-              <Space direction="horizontal" size={24} align="start" style={{ width: '100%' }}>
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              requiredMark={false}
+              initialValues={{
+                name: user?.name || '',
+                surname: user?.surname || '',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '24px', marginBottom: 32, alignItems: 'start' }}>
                 <Avatar
-                  size={96}
+                  size={80}
                   icon={<UserOutlined />}
-                  style={{ backgroundColor: '#1890ff', flexShrink: 0 }}
+                  style={{ backgroundColor: '#1890ff', color: '#fff', flexShrink: 0 }}
                 />
                 <div style={{ flex: 1 }}>
-                  <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
-                    {user?.name} {user?.surname}
-                  </Title>
-                  <Text style={{ display: 'block', marginBottom: 4, color: '#666' }}>
-                    {user?.email}
-                  </Text>
-                  <Text style={{ display: 'block', color: '#666' }}>
-                    Account Type: <Text strong>{user?.userType}</Text>
-                  </Text>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="First Name"
+                        name="name"
+                        rules={[{ required: true, message: 'Please enter your first name' }]}
+                        style={{ marginBottom: 16 }}
+                      >
+                        <Input
+                          placeholder="John"
+                          size="large"
+                          style={{ borderRadius: 6 }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Last Name"
+                        name="surname"
+                        rules={[{ required: true, message: 'Please enter your last name' }]}
+                        style={{ marginBottom: 16 }}
+                      >
+                        <Input
+                          placeholder="Doe"
+                          size="large"
+                          style={{ borderRadius: 6 }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                 </div>
-              </Space>
-            ) : (
-              // Edit Mode
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <div>
-                      <Text style={{ display: 'block', marginBottom: 8 }}>Name</Text>
-                      <Input
-                        size="large"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        placeholder="Name"
-                      />
-                    </div>
-                  </Col>
-                  <Col span={12}>
-                    <div>
-                      <Text style={{ display: 'block', marginBottom: 8 }}>Surname</Text>
-                      <Input
-                        size="large"
-                        value={formData.surname}
-                        onChange={(e) => handleInputChange('surname', e.target.value)}
-                        placeholder="Surname"
-                      />
-                    </div>
-                  </Col>
-                </Row>
+              </div>
 
-                <div>
-                  <Text style={{ display: 'block', marginBottom: 8 }}>Email</Text>
-                  <Input
-                    size="large"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="Email"
-                    type="email"
-                  />
-                </div>
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 24, marginBottom: 32 }}>
+                <Text style={{ fontSize: 13, color: '#999', display: 'block', marginBottom: 4 }}>
+                  Email (cannot be changed)
+                </Text>
+                <Text style={{ fontSize: 15 }}>{user?.email}</Text>
+              </div>
 
-                <Space size={12}>
+              <Form.Item style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
                   <Button
                     type="primary"
+                    htmlType="submit"
                     icon={<CheckOutlined />}
-                    onClick={handleSave}
                     size="large"
-                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                    loading={loading}
+                    style={{ borderRadius: 6, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                   >
                     Save Changes
                   </Button>
                   <Button
+                    size="large"
                     icon={<CloseOutlined />}
                     onClick={handleCancel}
-                    size="large"
-                    style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', color: '#fff' }}
+                    style={{ borderRadius: 6, color: '#666' }}
                   >
                     Cancel
                   </Button>
-                </Space>
-              </Space>
-            )}
-          </Card>
-
-          {/* Danger Zone */}
-          <Card
-            style={{
-              borderRadius: 8,
-              border: '1px solid #e0e0e0',
-              boxShadow: 'none'
-            }}
-            styles={{
-              body: { padding: 32 }
-            }}
-          >
-            <Title level={5} style={{ marginTop: 0, marginBottom: 16, color: '#ff4d4f' }}>
-              Danger Zone
-            </Title>
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={handleDeleteAccount}
-              size="large"
-            >
-              Delete Account
-            </Button>
+                </div>
+              </Form.Item>
+            </Form>
           </Card>
         </div>
       </Content>

@@ -36,9 +36,8 @@ export type User = {
 };
 
 export type UserEditRequest = {
-  name?: string;
-  surname?: string;
-  email?: string;
+  name: string;
+  surname: string;
 };
 
 export type UserDeleteRequest = {
