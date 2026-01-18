@@ -78,3 +78,13 @@ export type OfferPageResponse = {
   count: number;
   data: OfferResponse[];
 };
+
+export type OfferFilters = {
+  experienceLevels?: ExperienceLevelEnum[];
+  employmentTypes?: EmploymentTypeEnum[];
+  workModes?: WorkModeEnum[];
+  skills?: string[];
+  name?: string;
+  salaryBottom?: number;
+  salaryTop?: number;
+};

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Input, Card, Pagination, Empty, Typography, Flex, Space, Spin, message, Tag } from 'antd';
+import { Layout, Input, Card, Pagination, Empty, Typography, Flex, Space, Spin, message, Tag, InputNumber, Button, Collapse } from 'antd';
 import {
   SearchOutlined,
   EnvironmentOutlined,
@@ -8,12 +8,15 @@ import {
   DollarOutlined,
   ClockCircleOutlined,
   LaptopOutlined,
-  UserOutlined
+  UserOutlined,
+  FilterOutlined,
+  CloseOutlined,
+  CheckOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
 import { getAllOffers } from '../services/offer.service';
-import type { OfferResponse } from '../types/offer';
+import type { OfferResponse, OfferFilters, EmploymentTypeEnum, ExperienceLevelEnum, WorkModeEnum } from '../types/offer';
 import { EmploymentTypeLabels, ExperienceLevelLabels, WorkModeLabels } from '../types/offer';
 
 const { Content } = Layout;
@@ -31,19 +34,27 @@ const BrowseJobs: React.FC = () => {
   const navigate = useNavigate();
   const [offers, setOffers] = useState<OfferResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchOffers(currentPage);
-  }, [currentPage]);
+  // Applied filters (what's currently being used for the API call)
+  const [appliedFilters, setAppliedFilters] = useState<OfferFilters>({});
 
-  const fetchOffers = async (page: number) => {
+  // Pending filter states (what user is currently editing)
+  const [searchName, setSearchName] = useState('');
+  const [selectedExperienceLevels, setSelectedExperienceLevels] = useState<ExperienceLevelEnum[]>([]);
+  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<EmploymentTypeEnum[]>([]);
+  const [selectedWorkModes, setSelectedWorkModes] = useState<WorkModeEnum[]>([]);
+  const [skillInput, setSkillInput] = useState('');
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined);
+  const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined);
+
+  const fetchOffers = async (page: number, filters: OfferFilters) => {
     try {
       setLoading(true);
-      const response = await getAllOffers(page, itemsPerPage);
+      const response = await getAllOffers(page, itemsPerPage, filters);
 
       if (response.data) {
         setOffers(response.data.data);
@@ -58,16 +69,104 @@ const BrowseJobs: React.FC = () => {
     }
   };
 
-  const filteredOffers = offers.filter(offer =>
-    offer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    offer.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    offer.firm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (offer.skills && offer.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  useEffect(() => {
+    fetchOffers(currentPage, appliedFilters);
+  }, [currentPage, appliedFilters]);
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
+  const handleSearch = () => {
+    const newFilters: OfferFilters = {
+      ...appliedFilters,
+      name: searchName || undefined
+    };
+    setAppliedFilters(newFilters);
+    setCurrentPage(1);
   };
+
+  const handleApplyFilters = () => {
+    const newFilters: OfferFilters = {
+      name: appliedFilters.name, // Keep the search name from applied filters
+      experienceLevels: selectedExperienceLevels.length > 0 ? selectedExperienceLevels : undefined,
+      employmentTypes: selectedEmploymentTypes.length > 0 ? selectedEmploymentTypes : undefined,
+      workModes: selectedWorkModes.length > 0 ? selectedWorkModes : undefined,
+      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+      salaryBottom: salaryMin,
+      salaryTop: salaryMax
+    };
+    setAppliedFilters(newFilters);
+    setCurrentPage(1);
+  };
+
+  const handleExperienceLevelChange = (level: ExperienceLevelEnum, checked: boolean) => {
+    if (checked) {
+      setSelectedExperienceLevels([...selectedExperienceLevels, level]);
+    } else {
+      setSelectedExperienceLevels(selectedExperienceLevels.filter(l => l !== level));
+    }
+  };
+
+  const handleEmploymentTypeChange = (type: EmploymentTypeEnum, checked: boolean) => {
+    if (checked) {
+      setSelectedEmploymentTypes([...selectedEmploymentTypes, type]);
+    } else {
+      setSelectedEmploymentTypes(selectedEmploymentTypes.filter(t => t !== type));
+    }
+  };
+
+  const handleWorkModeChange = (mode: WorkModeEnum, checked: boolean) => {
+    if (checked) {
+      setSelectedWorkModes([...selectedWorkModes, mode]);
+    } else {
+      setSelectedWorkModes(selectedWorkModes.filter(m => m !== mode));
+    }
+  };
+
+  const handleAddSkill = () => {
+    if (skillInput.trim() && !selectedSkills.includes(skillInput.trim())) {
+      setSelectedSkills([...selectedSkills, skillInput.trim()]);
+      setSkillInput('');
+    }
+  };
+
+  const handleRemoveSkill = (skill: string) => {
+    setSelectedSkills(selectedSkills.filter(s => s !== skill));
+  };
+
+  const handleClearFilters = () => {
+    setSelectedExperienceLevels([]);
+    setSelectedEmploymentTypes([]);
+    setSelectedWorkModes([]);
+    setSelectedSkills([]);
+    setSalaryMin(undefined);
+    setSalaryMax(undefined);
+    // Also clear applied filters (except search name)
+    setAppliedFilters({ name: appliedFilters.name });
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchName('');
+    setAppliedFilters({ ...appliedFilters, name: undefined });
+    setCurrentPage(1);
+  };
+
+  // Check if there are pending filter changes
+  const hasPendingFilterChanges =
+    JSON.stringify(selectedExperienceLevels) !== JSON.stringify(appliedFilters.experienceLevels || []) ||
+    JSON.stringify(selectedEmploymentTypes) !== JSON.stringify(appliedFilters.employmentTypes || []) ||
+    JSON.stringify(selectedWorkModes) !== JSON.stringify(appliedFilters.workModes || []) ||
+    JSON.stringify(selectedSkills) !== JSON.stringify(appliedFilters.skills || []) ||
+    salaryMin !== appliedFilters.salaryBottom ||
+    salaryMax !== appliedFilters.salaryTop;
+
+  const hasActiveFilters = appliedFilters.name || (appliedFilters.experienceLevels && appliedFilters.experienceLevels.length > 0) ||
+    (appliedFilters.employmentTypes && appliedFilters.employmentTypes.length > 0) ||
+    (appliedFilters.workModes && appliedFilters.workModes.length > 0) ||
+    (appliedFilters.skills && appliedFilters.skills.length > 0) ||
+    appliedFilters.salaryBottom !== undefined || appliedFilters.salaryTop !== undefined;
+
+  const hasPendingFiltersSet = selectedExperienceLevels.length > 0 ||
+    selectedEmploymentTypes.length > 0 || selectedWorkModes.length > 0 ||
+    selectedSkills.length > 0 || salaryMin !== undefined || salaryMax !== undefined;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -99,25 +198,312 @@ const BrowseJobs: React.FC = () => {
           <Title level={3} style={{ marginBottom: 24, fontWeight: 500 }}>
             Browse Job Opportunities
           </Title>
-          <Input
-            size="large"
-            placeholder="Search jobs by title, company, skills, or description..."
-            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            allowClear
+
+          {/* Search Input */}
+          <Space.Compact style={{ width: '100%', marginBottom: 16 }}>
+            <Input
+              size="large"
+              placeholder="Search jobs by title..."
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              onClear={handleClearSearch}
+              style={{
+                borderRadius: '8px 0 0 8px',
+                border: '1px solid #e0e0e0',
+              }}
+            />
+            <Button
+              type="primary"
+              size="large"
+              icon={<SearchOutlined />}
+              onClick={handleSearch}
+              style={{
+                borderRadius: '0 8px 8px 0',
+                height: 40
+              }}
+            >
+              Search
+            </Button>
+          </Space.Compact>
+
+          {/* Filters Panel */}
+          <Card
             style={{
-              borderRadius: 8,
-              border: '1px solid #e0e0e0'
+              border: '1px solid #e0e0e0',
+              borderRadius: 12,
+              marginBottom: 24,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
             }}
-          />
+            styles={{ body: { padding: 0 } }}
+          >
+            <Collapse
+              ghost
+              defaultActiveKey={[]}
+              expandIconPosition="end"
+              items={[
+                {
+                  key: 'filters',
+                  label: (
+                    <Flex align="center" gap={12} style={{ padding: '4px 0' }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <FilterOutlined style={{ color: '#fff', fontSize: 16 }} />
+                      </div>
+                      <div>
+                        <Text strong style={{ fontSize: 15 }}>Filters</Text>
+                        {hasActiveFilters && (
+                          <Tag color="blue" style={{ marginLeft: 10, borderRadius: 10 }}>
+                            Active
+                          </Tag>
+                        )}
+                      </div>
+                    </Flex>
+                  ),
+                  children: (
+                    <div style={{ padding: '8px 16px 20px 16px' }}>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: 24
+                      }}>
+                        {/* Experience Level */}
+                        <div style={{
+                          background: '#fafafa',
+                          borderRadius: 10,
+                          padding: 16,
+                          border: '1px solid #f0f0f0'
+                        }}>
+                          <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                            <UserOutlined style={{ color: '#722ed1', fontSize: 14 }} />
+                            <Text strong style={{ color: '#333' }}>Experience Level</Text>
+                          </Flex>
+                          <Space wrap size={8}>
+                            {(Object.keys(ExperienceLevelLabels) as ExperienceLevelEnum[]).map((level) => (
+                              <Tag
+                                key={level}
+                                style={{
+                                  cursor: 'pointer',
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  fontSize: 13,
+                                  border: selectedExperienceLevels.includes(level) ? '1px solid #722ed1' : '1px solid #d9d9d9',
+                                  background: selectedExperienceLevels.includes(level) ? '#f9f0ff' : '#fff',
+                                  color: selectedExperienceLevels.includes(level) ? '#722ed1' : '#595959',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleExperienceLevelChange(level, !selectedExperienceLevels.includes(level))}
+                              >
+                                {ExperienceLevelLabels[level]}
+                              </Tag>
+                            ))}
+                          </Space>
+                        </div>
+
+                        {/* Employment Type */}
+                        <div style={{
+                          background: '#fafafa',
+                          borderRadius: 10,
+                          padding: 16,
+                          border: '1px solid #f0f0f0'
+                        }}>
+                          <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                            <ClockCircleOutlined style={{ color: '#1890ff', fontSize: 14 }} />
+                            <Text strong style={{ color: '#333' }}>Employment Type</Text>
+                          </Flex>
+                          <Space wrap size={8}>
+                            {(Object.keys(EmploymentTypeLabels) as EmploymentTypeEnum[]).map((type) => (
+                              <Tag
+                                key={type}
+                                style={{
+                                  cursor: 'pointer',
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  fontSize: 13,
+                                  border: selectedEmploymentTypes.includes(type) ? '1px solid #1890ff' : '1px solid #d9d9d9',
+                                  background: selectedEmploymentTypes.includes(type) ? '#e6f7ff' : '#fff',
+                                  color: selectedEmploymentTypes.includes(type) ? '#1890ff' : '#595959',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleEmploymentTypeChange(type, !selectedEmploymentTypes.includes(type))}
+                              >
+                                {EmploymentTypeLabels[type]}
+                              </Tag>
+                            ))}
+                          </Space>
+                        </div>
+
+                        {/* Work Mode */}
+                        <div style={{
+                          background: '#fafafa',
+                          borderRadius: 10,
+                          padding: 16,
+                          border: '1px solid #f0f0f0'
+                        }}>
+                          <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                            <LaptopOutlined style={{ color: '#13c2c2', fontSize: 14 }} />
+                            <Text strong style={{ color: '#333' }}>Work Mode</Text>
+                          </Flex>
+                          <Space wrap size={8}>
+                            {(Object.keys(WorkModeLabels) as WorkModeEnum[]).map((mode) => (
+                              <Tag
+                                key={mode}
+                                style={{
+                                  cursor: 'pointer',
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  fontSize: 13,
+                                  border: selectedWorkModes.includes(mode) ? '1px solid #13c2c2' : '1px solid #d9d9d9',
+                                  background: selectedWorkModes.includes(mode) ? '#e6fffb' : '#fff',
+                                  color: selectedWorkModes.includes(mode) ? '#13c2c2' : '#595959',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleWorkModeChange(mode, !selectedWorkModes.includes(mode))}
+                              >
+                                {WorkModeLabels[mode]}
+                              </Tag>
+                            ))}
+                          </Space>
+                        </div>
+
+                        {/* Salary Range */}
+                        <div style={{
+                          background: '#fafafa',
+                          borderRadius: 10,
+                          padding: 16,
+                          border: '1px solid #f0f0f0'
+                        }}>
+                          <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                            <DollarOutlined style={{ color: '#52c41a', fontSize: 14 }} />
+                            <Text strong style={{ color: '#333' }}>Salary Range (USD)</Text>
+                          </Flex>
+                          <Flex gap={12} align="center">
+                            <InputNumber
+                              placeholder="Min"
+                              value={salaryMin}
+                              onChange={(value) => { setSalaryMin(value ?? undefined); setCurrentPage(1); }}
+                              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as 0}
+                              style={{ width: 130, borderRadius: 6 }}
+                            />
+                            <Text type="secondary">to</Text>
+                            <InputNumber
+                              placeholder="Max"
+                              value={salaryMax}
+                              onChange={(value) => { setSalaryMax(value ?? undefined); setCurrentPage(1); }}
+                              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, '') || 0) as 0}
+                              style={{ width: 130, borderRadius: 6 }}
+                            />
+                          </Flex>
+                        </div>
+                      </div>
+
+                      {/* Skills - Full Width */}
+                      <div style={{
+                        background: '#fafafa',
+                        borderRadius: 10,
+                        padding: 16,
+                        border: '1px solid #f0f0f0',
+                        marginTop: 24
+                      }}>
+                        <Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+                          <SearchOutlined style={{ color: '#fa8c16', fontSize: 14 }} />
+                          <Text strong style={{ color: '#333' }}>Skills</Text>
+                        </Flex>
+                        <Flex gap={12} wrap="wrap" align="center">
+                          <Space.Compact>
+                            <Input
+                              placeholder="Type a skill and press Enter..."
+                              value={skillInput}
+                              onChange={(e) => setSkillInput(e.target.value)}
+                              onPressEnter={handleAddSkill}
+                              style={{ width: 280, borderRadius: '6px 0 0 6px' }}
+                            />
+                            <Button
+                              onClick={handleAddSkill}
+                              style={{ borderRadius: '0 6px 6px 0' }}
+                            >
+                              Add
+                            </Button>
+                          </Space.Compact>
+                          {selectedSkills.length > 0 && (
+                            <Flex gap={8} wrap="wrap" style={{ marginLeft: 8 }}>
+                              {selectedSkills.map((skill) => (
+                                <Tag
+                                  key={skill}
+                                  closable
+                                  onClose={() => handleRemoveSkill(skill)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    background: '#fff7e6',
+                                    border: '1px solid #ffd591',
+                                    color: '#d46b08'
+                                  }}
+                                >
+                                  {skill}
+                                </Tag>
+                              ))}
+                            </Flex>
+                          )}
+                        </Flex>
+                      </div>
+
+                      {/* Filter Action Buttons */}
+                      <Flex justify="flex-end" gap={12} style={{ marginTop: 20 }}>
+                        {(hasPendingFiltersSet || hasActiveFilters) && (
+                          <Button
+                            icon={<CloseOutlined />}
+                            onClick={handleClearFilters}
+                            style={{
+                              borderRadius: 8,
+                              height: 38,
+                              paddingLeft: 16,
+                              paddingRight: 16
+                            }}
+                          >
+                            Clear Filters
+                          </Button>
+                        )}
+                        <Button
+                          type="primary"
+                          icon={<CheckOutlined />}
+                          onClick={handleApplyFilters}
+                          disabled={!hasPendingFilterChanges && !hasPendingFiltersSet}
+                          style={{
+                            borderRadius: 8,
+                            height: 38,
+                            paddingLeft: 16,
+                            paddingRight: 16,
+                            background: hasPendingFilterChanges ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined
+                          }}
+                        >
+                          Apply Filters
+                        </Button>
+                      </Flex>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </Card>
         </div>
 
         <div style={{ maxWidth: 1200, margin: '0 auto', paddingBottom: 48, width: '60%' }}>
-          {filteredOffers.length > 0 ? (
+          {offers.length > 0 ? (
             <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {filteredOffers.map((offer) => (
+                {offers.map((offer) => (
                   <Card
                     key={offer.offerId}
                     hoverable
@@ -214,7 +600,7 @@ const BrowseJobs: React.FC = () => {
                 ))}
               </div>
 
-              {!searchTerm && totalCount > itemsPerPage && (
+              {totalCount > itemsPerPage && (
                 <div style={{ marginTop: 32, textAlign: 'center' }}>
                   <Pagination
                     current={currentPage}
@@ -240,9 +626,9 @@ const BrowseJobs: React.FC = () => {
                 description={
                   <div>
                     <div>No job offers found</div>
-                    {searchTerm && (
+                    {hasActiveFilters && (
                       <Text type="secondary" style={{ fontSize: 14, display: 'block', marginTop: 8 }}>
-                        Try adjusting your search criteria
+                        Try adjusting your search criteria or filters
                       </Text>
                     )}
                   </div>
