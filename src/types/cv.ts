@@ -24,3 +24,25 @@ export type CVPageResponse = {
 export type CVEditRequest = {
   filename: string;
 };
+
+export type CVTemplateEnum = 'CREATIVE' | 'CORPORATE' | 'MINIMAL' | 'MODERN';
+
+export const CVTemplateEnum = {
+  CREATIVE: 'CREATIVE' as const,
+  CORPORATE: 'CORPORATE' as const,
+  MINIMAL: 'MINIMAL' as const,
+  MODERN: 'MODERN' as const,
+};
+
+export const CVTemplateLabels: Record<CVTemplateEnum, string> = {
+  CREATIVE: 'Creative',
+  CORPORATE: 'Corporate',
+  MINIMAL: 'Minimal',
+  MODERN: 'Modern',
+};
+
+export type ModifyCVRequest = {
+  cvId: string;
+  name: string;
+  cvTemplate: CVTemplateEnum;
+};

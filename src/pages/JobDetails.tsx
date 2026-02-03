@@ -7,16 +7,20 @@ import {
   DollarOutlined,
   ClockCircleOutlined,
   LaptopOutlined,
-  UserOutlined
+  UserOutlined,
+  RobotOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import JobSeekerNav from '../components/JobSeekerNav';
 import CVSelectModal from '../components/CVSelectModal';
+import CVModifyModal from '../components/CVModifyModal';
 import { useAuth } from '../contexts/AuthContext';
 import { getOfferById } from '../services/offer.service';
 import { applyForOffer, getUserApplications } from '../services/application.service';
+import { modifyCV } from '../services/cv.service';
 import type { OfferResponse } from '../types/offer';
 import { EmploymentTypeLabels, ExperienceLevelLabels, WorkModeLabels } from '../types/offer';
+import type { CVTemplateEnum } from '../types/cv';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -38,6 +42,8 @@ const JobDetails: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [cvSelectModalVisible, setCvSelectModalVisible] = useState(false);
+  const [cvModifyModalVisible, setCvModifyModalVisible] = useState(false);
+  const [modifyLoading, setModifyLoading] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -121,6 +127,39 @@ const JobDetails: React.FC = () => {
 
   const handleBackToJobs = () => {
     navigate('/browse-jobs');
+  };
+
+  const handleModifyCVClick = () => {
+    if (!user) {
+      message.warning('Please login to use this feature');
+      navigate('/login');
+      return;
+    }
+    setCvModifyModalVisible(true);
+  };
+
+  const handleModifyCV = async (cvId: string, name: string, template: CVTemplateEnum) => {
+    if (!job) return;
+
+    setModifyLoading(true);
+
+    try {
+      await modifyCV(job.offerId, {
+        cvId,
+        name,
+        cvTemplate: template,
+      });
+      setCvModifyModalVisible(false);
+      message.success('CV modification started! Check your CVs list when it\'s ready.');
+    } catch (error: any) {
+      console.error('Error modifying CV:', error);
+      const errorMessage = error?.response?.data?.message ||
+                          error?.message ||
+                          'Failed to start CV modification';
+      message.error(errorMessage);
+    } finally {
+      setModifyLoading(false);
+    }
   };
 
   if (fetchLoading) {
@@ -246,8 +285,8 @@ const JobDetails: React.FC = () => {
               </div>
             )}
 
-            {/* Apply Button */}
-            <div style={{ marginTop: 24 }}>
+            {/* Action Buttons */}
+            <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
               {hasApplied ? (
                 <Button
                   size="large"
@@ -284,6 +323,29 @@ const JobDetails: React.FC = () => {
                   Apply Now
                 </Button>
               )}
+              <Button
+                size="large"
+                icon={<RobotOutlined />}
+                onClick={handleModifyCVClick}
+                style={{
+                  borderRadius: 6,
+                  fontWeight: 500,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(118, 75, 162, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Modify CV for this Offer
+              </Button>
             </div>
           </div>
 
@@ -337,6 +399,15 @@ const JobDetails: React.FC = () => {
           onCancel={() => setCvSelectModalVisible(false)}
           onSelect={handleApplyWithCV}
           loading={loading}
+        />
+
+        {/* CV Modify Modal */}
+        <CVModifyModal
+          visible={cvModifyModalVisible}
+          onCancel={() => setCvModifyModalVisible(false)}
+          onSubmit={handleModifyCV}
+          loading={modifyLoading}
+          jobTitle={job?.name}
         />
       </Content>
     </Layout>

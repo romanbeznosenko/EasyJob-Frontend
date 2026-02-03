@@ -1,6 +1,13 @@
 import type { ApiResponse } from "../types/general";
-import type { CVPageResponse, CVEditRequest } from "../types/cv";
+import type { CVPageResponse, CVEditRequest, ModifyCVRequest } from "../types/cv";
 import { Api } from "../api/Api";
+
+export const modifyCV = async (
+  offerId: string,
+  request: ModifyCVRequest
+): Promise<ApiResponse<void>> => {
+  return Api.post(`/api/offer-application/offer/${offerId}/modify-cv`, request);
+};
 
 export const listCVs = async (
   applierProfileId: string,
